@@ -1,5 +1,4 @@
 import os
-import shutil
 import tempfile
 from pathlib import Path
 
@@ -10,12 +9,11 @@ from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# Use a writable temporary location instead of the repository directory.
-ROOT = Path(tempfile.gettempdir()) / "meetmind_ai"
-CHROMA_DIR = str(ROOT / "vector_db")
-
 COLLECTION_NAME = "meeting_transcript"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+
+# Each meeting gets its own unique database directory.
+CHROMA_DIR = None
 
 _embeddings = None
 
@@ -33,6 +31,8 @@ def get_embeddings():
 
 
 def build_vector_store(transcript: str) -> Chroma:
+    global CHROMA_DIR
+
     print("Building vector store")
 
     text = (transcript or "").strip()
@@ -55,12 +55,8 @@ def build_vector_store(transcript: str) -> Chroma:
         for i, chunk in enumerate(chunks)
     ]
 
-    # Create the database in a writable temporary directory.
-    ROOT.mkdir(parents=True, exist_ok=True)
-
-    # Remove the previous database before creating a new meeting database.
-    if os.path.exists(CHROMA_DIR):
-        shutil.rmtree(CHROMA_DIR)
+    # Create a brand-new directory. Never delete or reuse an open database.
+    CHROMA_DIR = tempfile.mkdtemp(prefix="meetmind_chroma_")
 
     embeddings = get_embeddings()
 
@@ -71,13 +67,13 @@ def build_vector_store(transcript: str) -> Chroma:
         persist_directory=CHROMA_DIR,
     )
 
-    print("Vector store created successfully.")
+    print(f"Vector database created at: {CHROMA_DIR}")
 
     return vector_store
 
 
 def load_vector_store() -> Chroma:
-    if not os.path.exists(CHROMA_DIR):
+    if not CHROMA_DIR or not Path(CHROMA_DIR).exists():
         raise FileNotFoundError(
             "Vector database does not exist. Analyze a meeting first."
         )
