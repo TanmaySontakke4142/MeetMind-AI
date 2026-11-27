@@ -27,11 +27,13 @@ def summarize(transcript: str) -> str:
     map_chain = map_prompt | llm | StrOutputParser()
 
     chunks = split_transcript(text)
+    print(f"[Summarizer] Summarizing {len(chunks)} chunk(s) (transcript_chars={len(text)})")
     chunk_summaries = [
         invoke_text(map_chain, {"text": chunk})
         for chunk in chunks
     ]
     if len(chunk_summaries) == 1:
+        print(f"[Summarizer] Summary generated (chars={len(chunk_summaries[0])})")
         return chunk_summaries[0]
 
     combined_prompt = ChatPromptTemplate.from_messages([
@@ -48,7 +50,9 @@ def summarize(transcript: str) -> str:
         | llm
         | StrOutputParser()
     )
-    return invoke_text(combined_chain, "\n\n".join(chunk_summaries))
+    combined = invoke_text(combined_chain, "\n\n".join(chunk_summaries))
+    print(f"[Summarizer] Combined summary generated (chars={len(combined)})")
+    return combined
 
 
 def generate_title(transcript: str) -> str:
@@ -56,6 +60,7 @@ def generate_title(transcript: str) -> str:
     if not text:
         return "Meeting brief"
 
+    print(f"[Summarizer] Generating title (input_chars={min(len(text), 2000)})")
     title_prompt = ChatPromptTemplate.from_messages([
         (
             "system",
@@ -72,4 +77,5 @@ def generate_title(transcript: str) -> str:
     )
     raw = str(invoke_text(title_chain, text[:2000])).strip().strip('"')
     title = raw.splitlines()[0].strip() if raw else ""
+    print(f"[Summarizer] Title generated (chars={len(title)})")
     return title or "Meeting brief"

@@ -45,7 +45,9 @@ def _make_chain(retriever):
 def build_rag_chain(transcript: str):
     vector_store = build_vector_store(transcript)
     retriever = get_retriever(vector_store, k=4)
-    return _make_chain(retriever)
+    chain = _make_chain(retriever)
+    print("[RAG] RAG chain initialized")
+    return chain
 
 
 def load_rag_chain():
@@ -56,12 +58,13 @@ def load_rag_chain():
 
 def ask_question(rag_chain, question: str, history: list | None = None) -> str:
     prior = "None"
+    history_turns = len(history) if history else 0
     if history:
         prior = "\n".join(
             f"{turn.get('role', 'user')}: {turn.get('content', '')}"
             for turn in history[-6:]
         )
-    print(f"Question : {question}")
+    print(f"[RAG] Answering question (question_chars={len(question)}, history_turns={history_turns})")
     answer = rag_chain.invoke({"question": question, "history": prior})
-    print(f"Answer : {answer}")
+    print(f"[RAG] Answer generated (chars={len(str(answer))})")
     return answer

@@ -254,17 +254,22 @@ def run_with_progress(source: str | None, language: str, source_label: str, cach
     box = st.status("Working through the recording", expanded=True)
     try:
         box.write("Checking the Gemini API key")
+        print("[Pipeline] Stage 1: Checking Gemini API key")
         require_api_key()
 
         cached = st.session_state.get("cached_transcript")
         if cache_key and cached and cached.get("cache_key") == cache_key and cached.get("transcript"):
             box.write("Using the saved transcript from the previous attempt (skipping Whisper)")
             transcript = cached["transcript"]
+            print(f"[Pipeline] Stage 2-3: Reusing cached transcript (chars={len(transcript)}, language={language})")
         else:
             box.write("Preparing the audio")
+            print(f"[Pipeline] Stage 2: Audio preparation started (language={language})")
             chunks = process_input(source)
+            print(f"[Pipeline] Stage 2: Audio preparation completed (chunks={len(chunks)})")
 
             box.write("Transcribing with Whisper on this computer. This is the slowest step.")
+            print(f"[Pipeline] Stage 3: Transcription started (chunks={len(chunks)}, language={language})")
 
             def on_progress(index: int, total: int) -> None:
                 box.write(f"Transcribing chunk {index} of {total}")
@@ -273,6 +278,7 @@ def run_with_progress(source: str | None, language: str, source_label: str, cach
             if not transcript or not transcript.strip():
                 raise ValueError("No speech was found in this recording.")
 
+            print(f"[Pipeline] Stage 3: Transcription completed (chars={len(transcript)}, words={len(transcript.split())})")
             st.session_state.cached_transcript = {
                 "cache_key": cache_key,
                 "transcript": transcript,
@@ -282,25 +288,37 @@ def run_with_progress(source: str | None, language: str, source_label: str, cach
             }
 
         box.write("Writing the title and summary")
+        print("[Pipeline] Stage 4: Invoking Gemini for title and summary")
         title = generate_title(transcript)
         summary = summarize(transcript)
+        print(f"[Pipeline] Stage 4: Title & summary completed (title_chars={len(str(title))}, summary_chars={len(str(summary))})")
 
         box.write("Extracting action items, decisions, discussion points and open questions")
+        print("[Pipeline] Stage 5: Invoking Gemini for structured extractions")
         action_items = extract_action_items(transcript)
         decisions = extract_key_decisions(transcript)
         discussion = extract_discussion_points(transcript)
         questions = extract_questions(transcript)
+        print(
+            "[Pipeline] Stage 5: Extractions completed "
+            f"(actions_chars={len(str(action_items))}, decisions_chars={len(str(decisions))}, "
+            f"discussion_chars={len(str(discussion))}, questions_chars={len(str(questions))})"
+        )
 
         box.write("Indexing the transcript locally with MiniLM and ChromaDB")
+        print("[Pipeline] Stage 6: Building ChromaDB vector store & RAG chain")
         rag_chain = build_rag_chain(transcript)
+        print("[Pipeline] Stage 6: RAG chain ready")
     except Exception as exc:  # noqa: BLE001 - surface any failure to the person
+        print(f"[Pipeline] Error: {type(exc).__name__}: {exc}")
         if st.session_state.get("cached_transcript"):
             st.session_state.cached_transcript["failed"] = True
         box.update(label="Could not finish", state="error", expanded=True)
         st.error(str(exc))
         return None
 
-    st.session_state.cached_transcript = None
+    if st.session_state.get("cached_transcript"):
+        st.session_state.cached_transcript["failed"] = False
     elapsed = int(time.time() - started)
     box.update(label=f"Done in {elapsed // 60}m {elapsed % 60}s", state="complete", expanded=False)
 
@@ -323,6 +341,7 @@ def run_with_progress(source: str | None, language: str, source_label: str, cach
         result["pdf"] = build_pdf(result)
     except Exception:  # noqa: BLE001 - PDF is optional; TXT still works
         result["pdf"] = None
+    print(f"[State] Built result rid={result['rid']} (has_rag={result['rag_chain'] is not None})")
     return result
 
 
@@ -427,7 +446,9 @@ def render_landing() -> None:
             elif upload is None:
                 st.warning("Choose a recording to upload first.")
             else:
-                digest = hashlib.sha256(bytes(upload.getbuffer()[:65536])).hexdigest()
+                buf = upload.getbuffer()
+                sample = bytes(buf[:65536]) + (bytes(buf[-65536:]) if len(buf) > 65536 else b"")
+                digest = hashlib.sha256(sample).hexdigest()
                 cache_key = ("file", upload.name, upload.size, digest, language)
                 label = upload.name
                 if cached and cached.get("cache_key") == cache_key and cached.get("transcript"):
@@ -436,13 +457,15 @@ def render_landing() -> None:
                     folder = tempfile.mkdtemp(prefix="minutes_")
                     source = os.path.join(folder, os.path.basename(upload.name))
                     with open(source, "wb") as fh:
-                        fh.write(upload.getbuffer())
+                        fh.write(buf)
 
             if source:
                 result = run_with_progress(source, language, label, cache_key=cache_key)
                 if result:
                     st.session_state.result = result
                     st.session_state.chat = []
+                    st.session_state.page = "Meeting Workspace"
+                    print(f"[State] Saved result rid={result['rid']} and switching page to 'Meeting Workspace'")
                     st.rerun()
 
         cached = st.session_state.get("cached_transcript")
@@ -460,6 +483,8 @@ def render_landing() -> None:
                     if result:
                         st.session_state.result = result
                         st.session_state.chat = []
+                        st.session_state.page = "Meeting Workspace"
+                        print(f"[State] Retry succeeded rid={result['rid']} and switching page to 'Meeting Workspace'")
                         st.rerun()
             with dl_col:
                 st.download_button(
@@ -568,6 +593,12 @@ def render_result() -> None:
     questions = parse_items(r["open_questions"])
     words = len(r["transcript"].split())
     minutes = max(1, round(words / 200))
+    print(
+        f"[UI] Rendering Meeting Workspace rid={r.get('rid')} "
+        f"(summary_chars={len(as_text(r.get('summary')))}, actions={len(actions)}, "
+        f"decisions={len(decisions)}, discussion={len(discussion)}, "
+        f"questions={len(questions)}, words={words}, has_rag={r.get('rag_chain') is not None})"
+    )
 
     language = "Hinglish, translated to English" if r["language"] == "hinglish" else "English"
     _h(
@@ -642,6 +673,7 @@ def main() -> None:
     inject_css()
     render_sidebar()
     page = st.session_state.page
+    print(f"[UI] Rendering page={page} (has_result={st.session_state.result is not None})")
     if page == "Dashboard":
         render_dashboard()
     elif page == "Meeting Studio":

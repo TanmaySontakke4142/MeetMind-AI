@@ -29,8 +29,20 @@ def _read_streamlit_secret(name: str) -> str:
     try:
         import streamlit as st
 
-        value = st.secrets.get(name, "")
-        return str(value).strip() if value else ""
+        secrets = st.secrets
+        if name in secrets and secrets[name]:
+            return str(secrets[name]).strip()
+
+        lowered = name.lower()
+        for key in secrets:
+            val = secrets[key]
+            if str(key).lower() == lowered and isinstance(val, (str, int, float)):
+                return str(val).strip()
+            if hasattr(val, "items"):
+                for sub_key, sub_val in val.items():
+                    if str(sub_key).lower() == lowered and sub_val:
+                        return str(sub_val).strip()
+        return ""
     except Exception:
         return ""
 
@@ -182,9 +194,10 @@ def get_llm(max_tokens: int = 1200):
     def _call(value):
         client = _client(require_api_key())
         system_instruction, contents = _messages_to_gemini(value)
+        effective_max_tokens = max(max_tokens, _MIN_OUTPUT_TOKENS)
         config = types.GenerateContentConfig(
             temperature=0,
-            max_output_tokens=max(max_tokens, _MIN_OUTPUT_TOKENS),
+            max_output_tokens=effective_max_tokens,
             system_instruction=system_instruction,
         )
 
@@ -192,6 +205,7 @@ def get_llm(max_tokens: int = 1200):
         errors: list[str] = []
 
         for model in _model_order():
+            print(f"[LLM] Invoking Gemini model={model} max_output_tokens={effective_max_tokens}")
             try:
                 response = client.models.generate_content(
                     model=model,
@@ -200,6 +214,7 @@ def get_llm(max_tokens: int = 1200):
                 )
             except APIError as exc:
                 category, clean_msg = _classify_api_error(exc)
+                print(f"[LLM] Gemini model={model} failed category={category}")
                 if category == "auth":
                     raise RuntimeError(clean_msg) from exc
                 categories.append(category)
@@ -207,6 +222,7 @@ def get_llm(max_tokens: int = 1200):
                 continue
             except Exception as exc:
                 category, clean_msg = _classify_api_error(exc)
+                print(f"[LLM] Gemini model={model} failed category={category}")
                 if category == "auth":
                     raise RuntimeError(clean_msg) from exc
                 categories.append(category)
@@ -215,8 +231,10 @@ def get_llm(max_tokens: int = 1200):
 
             text = _response_text(response)
             if text:
+                print(f"[LLM] Gemini model={model} succeeded response_chars={len(text)}")
                 return text
 
+            print(f"[LLM] Gemini model={model} returned empty text")
             categories.append("empty")
             errors.append(f"{model}: empty response")
 
