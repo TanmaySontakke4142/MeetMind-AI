@@ -1,16 +1,3 @@
-"""
-MeetMind AI - Streamlit UI for the AI Meeting Assistant.
-
-
-
-Run from the project root (next to main.py, utils/ and core/):
-    streamlit run app.py
-
-Design note: the look is a stenographer's pad - pale green paper, ink-green
-type, a red margin line and a highlighter. The one animated moment is the
-pen-trace under the headline, drawn once on load.
-"""
-
 import html
 import math
 import os
