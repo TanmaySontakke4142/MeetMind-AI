@@ -1,7 +1,7 @@
 """
 MeetMind AI - Streamlit UI for the AI Meeting Assistant.
 
-Built on Meet-Sutra (MIT) by Ranveer Sachin Deshmukh.
+
 
 Run from the project root (next to main.py, utils/ and core/):
     streamlit run app.py
@@ -49,141 +49,27 @@ st.set_page_config(
 # --------------------------------------------------------------------------
 
 CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..700&display=swap');
-
-:root {
-  --paper: #E3EBD8;
-  --paper-light: #EEF3E6;
-  --paper-deep: #D2DDC5;
-  --ink: #16251D;
-  --muted: #55665B;
-  --red: #C63D2F;
-  --blue: #274B9F;
-  --marker: rgba(243, 221, 91, .78);
-  --rule: rgba(22, 37, 29, .16);
-  --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
-  --text: 'Literata', Georgia, 'Times New Roman', serif;
-}
-
-.stApp { background: var(--paper); color: var(--ink); font-family: var(--display); color-scheme: light; }
-
-/* ---------- theme colours (so no .streamlit/config.toml is needed) ---------- */
-.stApp :where(p, li, label, h1, h2, h3, h4) { color: var(--ink); }
-.stButton button[kind="primary"], .stButton button[data-testid="stBaseButton-primary"] {
-  background: var(--ink); border-color: var(--ink);
-}
-.stButton button[kind="primary"] :is(p, span), .stButton button[data-testid="stBaseButton-primary"] :is(p, span) { color: var(--paper); }
-.stButton button:not([kind="primary"]):not([data-testid="stBaseButton-primary"]) { background: transparent; border: 1px solid var(--ink); }
-.stCheckbox label:has(input:checked) > span:first-child { background-color: var(--ink) !important; border-color: var(--ink) !important; }
-.stRadio label:has(input:checked) > div:first-child { background-color: var(--ink) !important; border-color: var(--ink) !important; }
-[data-testid="stFileUploaderDropzone"] :where(span, small, p, div) { color: var(--ink); }
-[data-testid="stFileUploaderDropzone"] button { background: var(--paper); color: var(--ink); border: 1px solid var(--ink); }
-[data-testid="stChatInput"], [data-testid="stChatInput"] textarea { background: var(--paper-light); color: var(--ink); }
-#MainMenu, footer, [data-testid="stToolbar"], [data-testid="stDecoration"] { visibility: hidden; }
-header[data-testid="stHeader"] { background: transparent; }
-.block-container { max-width: 1120px; padding-top: 2.6rem; padding-bottom: 5rem; }
-
-/* ---------- sidebar ---------- */
-section[data-testid="stSidebar"] { background: var(--ink); border-right: none; }
-section[data-testid="stSidebar"] :is(p, span, label, div, li) { color: var(--paper); }
-.brand { font-family: var(--display); font-weight: 800; font-size: 1.7rem; letter-spacing: -.02em; line-height: 1; }
-.brand small { display: block; margin-top: .35rem; font-weight: 400; font-size: .86rem; letter-spacing: 0; opacity: .75; }
-.side-note { font-family: var(--text); font-size: .9rem; line-height: 1.6; opacity: .88; margin-top: 1.4rem; }
-.side-rule { height: 1px; background: rgba(227, 235, 216, .22); margin: 1.4rem 0 1.1rem; }
-section[data-testid="stSidebar"] .side-title { font-weight: 700; font-size: .95rem; margin-bottom: .5rem; }
-section[data-testid="stSidebar"] .stButton button,
-section[data-testid="stSidebar"] .stDownloadButton button {
-  width: 100%; background: transparent; border: 1px solid rgba(227, 235, 216, .55); border-radius: 6px;
-}
-section[data-testid="stSidebar"] .stButton button:hover,
-section[data-testid="stSidebar"] .stDownloadButton button:hover { border-color: #F3DD5B; }
-section[data-testid="stSidebar"] :is(button[kind="primary"], button[data-testid="stBaseButton-primary"]) {
-  background: #F3DD5B; border-color: #F3DD5B;
-}
-section[data-testid="stSidebar"] :is(button[kind="primary"], button[data-testid="stBaseButton-primary"]) :is(p, span) { color: var(--ink); }
-
-/* ---------- hero ---------- */
-.hero-title {
-  font-family: 'Manrope', var(--display); font-weight: 700;
-  font-size: clamp(1.9rem, 3.2vw, 2.7rem); line-height: 1.15; letter-spacing: -.02em;
-  margin: 0 0 1rem; max-width: 22ch;
-}
-.hero-copy { font-family: var(--text); font-size: 1.08rem; line-height: 1.7; color: var(--muted); max-width: 60ch; margin: 0; }
-.trace { display: block; width: 100%; height: 56px; margin: 1.6rem 0 2rem; color: var(--ink); overflow: visible; }
-.trace path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 2.6s cubic-bezier(.45, .05, .25, 1) forwards; }
-@keyframes draw { to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .trace path { animation: none; stroke-dashoffset: 0; } }
-
-/* ---------- form ---------- */
-.form-title { font-weight: 700; font-size: 1.15rem; margin: 0 0 .4rem; }
-.stTextInput input, .stTextArea textarea {
-  background: var(--paper-light) !important; border: 1.5px solid var(--ink) !important; border-radius: 6px !important;
-  color: var(--ink) !important; font-family: var(--display) !important;
-}
-.stTextInput input:focus { box-shadow: 0 0 0 3px var(--marker) !important; }
-[data-testid="stFileUploaderDropzone"] { background: var(--paper-light); border: 1.5px dashed var(--ink); border-radius: 6px; }
-.stRadio label p { font-family: var(--display); font-size: .98rem; }
-.stButton button, .stDownloadButton button { font-family: var(--display); font-weight: 600; border-radius: 6px; padding: .55rem 1.1rem; }
-.stButton button:focus-visible, .stDownloadButton button:focus-visible, .stTextInput input:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
-.stCaption, [data-testid="stCaptionContainer"] { color: var(--muted); font-family: var(--text); }
-
-/* ---------- what comes back ---------- */
-.gets { border-left: 1.5px solid var(--red); padding-left: 1.4rem; }
-.gets-row { padding: .7rem 0; border-bottom: 1px solid var(--rule); }
-.gets-row:last-child { border-bottom: none; }
-.gets-row b { font-family: var(--display); font-weight: 700; display: block; font-size: 1.02rem; }
-.gets-row span { font-family: var(--text); font-size: .95rem; color: var(--muted); }
-
-/* ---------- result header ---------- */
-.brief-title { font-family: 'Manrope', var(--display); font-weight: 700; font-size: clamp(1.6rem, 2.8vw, 2.2rem); line-height: 1.2; letter-spacing: -.02em; margin: 0 0 .7rem; max-width: 30ch; }
-.brief-meta { font-family: var(--text); color: var(--muted); font-size: .95rem; margin: 0 0 1rem; }
-.brief-strip { font-family: var(--text); font-size: 1.08rem; line-height: 1.75; max-width: 66ch; margin: 0 0 2rem; }
-.brief-strip b { font-weight: 700; background: linear-gradient(transparent 58%, var(--marker) 58%); }
-
-/* ---------- tabs ---------- */
-.stTabs [data-baseweb="tab-list"] { gap: 1.6rem; border-bottom: 1.5px solid var(--ink); }
-.stTabs button[data-baseweb="tab"] { padding: .7rem 0; background: transparent; color: var(--muted); }
-.stTabs button[data-baseweb="tab"] p { font-family: var(--display); font-weight: 600; font-size: 1rem; }
-.stTabs button[data-baseweb="tab"][aria-selected="true"] { color: var(--ink); }
-.stTabs [data-baseweb="tab-highlight"] { background: var(--ink); height: 4px; }
-.stTabs [data-baseweb="tab-border"] { display: none; }
-.stTabs [data-testid="stMarkdownContainer"] :is(p, li) { font-family: var(--text); font-size: 1.05rem; line-height: 1.75; max-width: 70ch; }
-.stTabs button[data-baseweb="tab"] [data-testid="stMarkdownContainer"] p { font-family: var(--display); max-width: none; line-height: 1.3; }
-.tab-lead { font-family: var(--text); color: var(--muted); margin: 1.1rem 0 .6rem; }
-
-/* ---------- action items (table + tickable) ---------- */
-table.sheet { width: 100%; border-collapse: collapse; margin: .4rem 0 1rem; }
-table.sheet th, table.sheet td {
-  text-align: left; padding: .65rem .45rem; border-bottom: 1px solid var(--rule);
-  font-family: var(--text); font-size: 1rem; vertical-align: top;
-}
-table.sheet th { font-family: var(--display); font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; }
-.stCheckbox { border-bottom: 1px solid var(--rule); padding: .6rem 0; max-width: 72ch; }
-.stCheckbox label { align-items: flex-start; }
-
-/* ---------- decisions and questions ---------- */
-.note { display: grid; grid-template-columns: 2rem 1fr; gap: .5rem; padding: .75rem 0; border-bottom: 1px solid var(--rule); max-width: 72ch; }
-.note .glyph { font-family: var(--display); font-weight: 800; font-size: 1.3rem; line-height: 1.4; }
-.note .body { font-family: var(--text); font-size: 1.04rem; line-height: 1.7; }
-.note.decision .glyph { color: var(--blue); }
-.note.question .glyph { color: var(--red); }
-
-/* ---------- transcript as a ruled notebook page ---------- */
-.notebook {
-  max-height: 560px; overflow-y: auto; padding: 0 1.4rem 0 4.4rem; margin-top: .8rem;
-  border: 1px solid var(--rule); background-color: var(--paper-light);
-  background-image:
-    linear-gradient(to right, transparent 3.3rem, var(--red) 3.3rem, var(--red) calc(3.3rem + 1.5px), transparent calc(3.3rem + 1.5px)),
-    repeating-linear-gradient(to bottom, transparent 0, transparent calc(2rem - 1px), var(--rule) calc(2rem - 1px), var(--rule) 2rem);
-  background-attachment: local, local;
-  font-family: var(--text); font-size: 1rem; line-height: 2rem;
-}
-.notebook p { margin: 0 0 2rem; }
-.notebook mark { background: var(--marker); color: var(--ink); padding: 0 .1em; }
-
-/* ---------- chat ---------- */
-[data-testid="stChatMessage"] { background: var(--paper-light); border: 1px solid var(--rule); border-radius: 6px; }
-[data-testid="stChatInput"] textarea { font-family: var(--display); }
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+:root { --bg:#090d17; --panel:#111827; --panel2:#151e30; --text:#edf2ff; --muted:#9aa8c3; --purple:#8b5cf6; --teal:#2dd4bf; --line:rgba(148,163,184,.16); }
+.stApp { background:radial-gradient(ellipse at 15% 0%, #202447 0%, transparent 38%), radial-gradient(ellipse at 95% 12%, #12363a 0%, transparent 30%), var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; }
+.stApp :is(p,li,label,h1,h2,h3,h4,span) { color:var(--text); }
+.block-container { max-width:1250px; padding-top:2rem; padding-bottom:4rem; }
+#MainMenu,footer,[data-testid="stToolbar"],[data-testid="stDecoration"] { visibility:hidden; } header[data-testid="stHeader"] { background:transparent; }
+section[data-testid="stSidebar"] { background:#0b1020; border-right:1px solid var(--line); } section[data-testid="stSidebar"] :is(p,span,label,div) { color:var(--text); }
+.brand { font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; letter-spacing:-.04em; } .brand small { display:block; color:var(--muted); font-size:.82rem; font-weight:400; margin-top:.35rem; letter-spacing:0; }
+.side-note { color:var(--muted); font-size:.9rem; line-height:1.6; padding:1rem 0; } .side-rule { border-top:1px solid var(--line); margin:1.2rem 0; }
+.stButton button,.stDownloadButton button { border-radius:12px!important; border:1px solid var(--line)!important; background:linear-gradient(135deg,#182239,#121a2a)!important; color:var(--text)!important; font-weight:600!important; transition:all .18s ease!important; padding:.65rem 1rem!important; }
+.stButton button:hover,.stDownloadButton button:hover { border-color:var(--purple)!important; transform:translateY(-1px); box-shadow:0 5px 20px rgba(139,92,246,.15); }
+.stButton button[data-testid="stBaseButton-primary"],.stButton button[kind="primary"] { background:linear-gradient(135deg,#8b5cf6,#5b5bd6)!important; border-color:#8b5cf6!important; }
+.stTextInput input,.stTextArea textarea { background:#101827!important; border:1px solid var(--line)!important; border-radius:12px!important; color:var(--text)!important; }
+[data-testid="stFileUploaderDropzone"] { background:#101827; border:1px dashed #64748b; border-radius:16px; } [data-testid="stFileUploaderDropzone"] :is(span,small,p,div) { color:var(--text); }
+[data-testid="stFileUploaderDropzone"] button { background:#182239!important; color:var(--text)!important; }
+.stRadio label p { color:var(--text)!important; } .stTabs [data-baseweb="tab-list"] { gap:.5rem; border-bottom:1px solid var(--line); } .stTabs button[data-baseweb="tab"] { color:var(--muted); padding:.7rem; } .stTabs button[aria-selected="true"] { color:var(--text); border-bottom-color:var(--purple); }
+.stTabs [data-testid="stMarkdownContainer"] :is(p,li) { line-height:1.75; } [data-testid="stChatMessage"] { background:#111827; border:1px solid var(--line); border-radius:16px; } [data-testid="stChatInput"] textarea { background:#101827!important; color:var(--text)!important; }
+.stCheckbox { padding:.35rem 0; } .stCheckbox label { color:var(--text)!important; } .stCaption,[data-testid="stCaptionContainer"] { color:var(--muted); }
+.hero-title { font-family:'Space Grotesk',sans-serif; font-size:clamp(2.1rem,4vw,3.6rem); font-weight:700; letter-spacing:-.045em; line-height:1.1; margin-bottom:.8rem; } .hero-copy { color:var(--muted); font-size:1.1rem; line-height:1.7; max-width:65ch; }
+.card { background:linear-gradient(145deg,rgba(25,35,55,.94),rgba(15,21,34,.94)); border:1px solid var(--line); border-radius:20px; padding:1.25rem; margin:.3rem 0; } .eyebrow { color:#a78bfa; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em; } .gets { border-left:2px solid var(--purple); padding-left:1.2rem; } .gets-row { padding:.8rem 0; border-bottom:1px solid var(--line); } .gets-row b { display:block; font-size:1.02rem; } .gets-row span { color:var(--muted); font-size:.92rem; }
+.brief-title { font-family:'Space Grotesk',sans-serif; font-size:clamp(1.7rem,3vw,2.5rem); font-weight:700; letter-spacing:-.03em; } .brief-meta,.tab-lead { color:var(--muted); } .brief-strip { line-height:1.7; } table.sheet { width:100%; border-collapse:collapse; } table.sheet td,table.sheet th { padding:.7rem; border-bottom:1px solid var(--line); text-align:left; } .note { padding:.8rem 0; border-bottom:1px solid var(--line); } .note .body { line-height:1.7; } .notebook { background:#101827; border:1px solid var(--line); border-radius:14px; padding:1rem; max-height:560px; overflow-y:auto; line-height:1.8; }
 """
 
 
@@ -443,33 +329,47 @@ def run_with_progress(source: str, language: str, source_label: str):
 def render_sidebar() -> None:
     result = st.session_state.result
     with st.sidebar:
-        _h(f'<div class="brand">{APP_NAME}<small>Meeting analysis and action items</small></div>')
+        _h(f'<div class="brand">✦ {APP_NAME}<small>Turn conversations into action</small></div>')
+        st.markdown('<div class="side-rule"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="eyebrow">Workspace</div>', unsafe_allow_html=True)
+        if st.button("⌂   Dashboard", use_container_width=True, key="nav_dashboard"):
+            st.session_state.page = "Dashboard"; st.rerun()
+        if st.button("◉   Meeting Studio", use_container_width=True, key="nav_studio"):
+            st.session_state.page = "Meeting Studio"; st.rerun()
+        if st.button("✦   Meeting Workspace", use_container_width=True, key="nav_workspace", disabled=result is None):
+            st.session_state.page = "Meeting Workspace"; st.rerun()
+        st.markdown('<div class="side-rule"></div>', unsafe_allow_html=True)
+        if result is not None:
+            slug = slugify(result["title"])
+            if result.get("pdf"):
+                st.download_button("↓  Download PDF", data=result["pdf"], file_name=f"{slug}.pdf", mime="application/pdf", type="primary", key="dl_pdf")
+            st.download_button("↓  Download TXT", data=result["txt"], file_name=f"{slug}.txt", mime="text/plain", key="dl_txt")
+            if st.button("＋  Start a new meeting", use_container_width=True, key="reset"):
+                st.session_state.result = None; st.session_state.chat = []; st.session_state.page = "Meeting Studio"; st.rerun()
+        else:
+            _h('<div class="side-note">Upload a recording or add a video link to create a meeting brief, extract tasks and explore the transcript.</div>')
 
-        if result is None:
-            _h(
-                '<div class="side-note">Whisper transcribes audio on this computer. '
-                "Embeddings stay in a local ChromaDB index. Only transcript text is sent to "
-                "OpenRouter to write the brief and answer questions."
-                "<br><br>Based on Meet-Sutra by Ranveer Sachin Deshmukh.</div>"
-            )
-            return
 
-        _h('<div class="side-rule"></div><div class="side-title">Take it with you</div>')
-        slug = slugify(result["title"])
-        if result.get("pdf"):
-            st.download_button(
-                "Download PDF", data=result["pdf"], file_name=f"{slug}.pdf",
-                mime="application/pdf", type="primary", key="dl_pdf",
-            )
-        st.download_button(
-            "Download TXT", data=result["txt"], file_name=f"{slug}.txt",
-            mime="text/plain", key="dl_txt",
-        )
-        _h('<div class="side-rule"></div>')
-        if st.button("Start a new meeting", key="reset"):
-            st.session_state.result = None
-            st.session_state.chat = []
-            st.rerun()
+def render_dashboard() -> None:
+    _h('<div class="eyebrow">YOUR AI MEETING WORKSPACE</div><div class="hero-title">Turn conversations<br>into <span style="color:#a78bfa">action.</span></div><p class="hero-copy">Capture the important moments. Find decisions, follow-ups and answers without replaying the entire meeting.</p>')
+    c1,c2,c3=st.columns(3)
+    for col,icon,title,desc in [(c1,"◉","Meeting Studio","Upload audio, video or a YouTube link."),(c2,"✦","AI insights","Summaries, decisions and tasks."),(c3,"⌕","Meeting chat","Ask questions grounded in your transcript.")]:
+        with col: _h(f'<div class="card"><div style="font-size:1.8rem;color:#a78bfa">{icon}</div><h3>{title}</h3><p style="color:#9aa8c3">{desc}</p></div>')
+    st.markdown("### Start here")
+    a,b=st.columns([1,1])
+    with a:
+        if st.button("＋  Create a new meeting", type="primary", use_container_width=True, key="dash_new"):
+            st.session_state.page="Meeting Studio"; st.rerun()
+    with b:
+        if st.button("◉  Open meeting workspace", use_container_width=True, key="dash_workspace", disabled=st.session_state.result is None):
+            st.session_state.page="Meeting Workspace"; st.rerun()
+    if st.session_state.result:
+        r=st.session_state.result
+        _h('<div class="card"><div class="eyebrow">LATEST MEETING</div><h3>'+html.escape(r.get("title","Meeting"))+'</h3><p style="color:#9aa8c3">'+html.escape(r.get("source_label",""))+'</p></div>')
+        if st.button("View latest meeting →", type="primary", key="dash_latest"):
+            st.session_state.page="Meeting Workspace"; st.rerun()
+    else:
+        st.info("Your meeting library will appear here after you analyze a recording. No sample or placeholder meeting data is shown.")
 
 
 def render_landing() -> None:
@@ -701,13 +601,24 @@ def render_result() -> None:
 def main() -> None:
     st.session_state.setdefault("result", None)
     st.session_state.setdefault("chat", [])
-
+    st.session_state.setdefault("page", "Dashboard")
     inject_css()
     render_sidebar()
-    if st.session_state.result is None:
+    page = st.session_state.page
+    if page == "Dashboard":
+        render_dashboard()
+    elif page == "Meeting Studio":
         render_landing()
+    elif page == "Meeting Workspace":
+        if st.session_state.result is None:
+            st.info("Analyze a meeting first to unlock the workspace.")
+            if st.button("Go to Meeting Studio", type="primary"):
+                st.session_state.page="Meeting Studio"; st.rerun()
+        else:
+            render_result()
     else:
-        render_result()
+        st.session_state.page="Dashboard"; st.rerun()
+
 
 
 main()
