@@ -1,3 +1,4 @@
+import hashlib
 import html
 import math
 import os
@@ -248,24 +249,37 @@ def build_pdf(r: dict) -> bytes:
 # Pipeline (same steps as run_pipeline, with progress shown on screen)
 # --------------------------------------------------------------------------
 
-def run_with_progress(source: str, language: str, source_label: str):
+def run_with_progress(source: str | None, language: str, source_label: str, cache_key: tuple | None = None):
     started = time.time()
     box = st.status("Working through the recording", expanded=True)
     try:
-        box.write("Checking the OpenRouter API key")
+        box.write("Checking the Gemini API key")
         require_api_key()
 
-        box.write("Preparing the audio")
-        chunks = process_input(source)
+        cached = st.session_state.get("cached_transcript")
+        if cache_key and cached and cached.get("cache_key") == cache_key and cached.get("transcript"):
+            box.write("Using the saved transcript from the previous attempt (skipping Whisper)")
+            transcript = cached["transcript"]
+        else:
+            box.write("Preparing the audio")
+            chunks = process_input(source)
 
-        box.write("Transcribing with Whisper on this computer. This is the slowest step.")
+            box.write("Transcribing with Whisper on this computer. This is the slowest step.")
 
-        def on_progress(index: int, total: int) -> None:
-            box.write(f"Transcribing chunk {index} of {total}")
+            def on_progress(index: int, total: int) -> None:
+                box.write(f"Transcribing chunk {index} of {total}")
 
-        transcript = transcribe_all(chunks, language=language, on_progress=on_progress)
-        if not transcript or not transcript.strip():
-            raise ValueError("No speech was found in this recording.")
+            transcript = transcribe_all(chunks, language=language, on_progress=on_progress)
+            if not transcript or not transcript.strip():
+                raise ValueError("No speech was found in this recording.")
+
+            st.session_state.cached_transcript = {
+                "cache_key": cache_key,
+                "transcript": transcript,
+                "source_label": source_label,
+                "language": language,
+                "failed": False,
+            }
 
         box.write("Writing the title and summary")
         title = generate_title(transcript)
@@ -280,10 +294,13 @@ def run_with_progress(source: str, language: str, source_label: str):
         box.write("Indexing the transcript locally with MiniLM and ChromaDB")
         rag_chain = build_rag_chain(transcript)
     except Exception as exc:  # noqa: BLE001 - surface any failure to the person
+        if st.session_state.get("cached_transcript"):
+            st.session_state.cached_transcript["failed"] = True
         box.update(label="Could not finish", state="error", expanded=True)
         st.error(str(exc))
         return None
 
+    st.session_state.cached_transcript = None
     elapsed = int(time.time() - started)
     box.update(label=f"Done in {elapsed // 60}m {elapsed % 60}s", state="complete", expanded=False)
 
@@ -332,7 +349,7 @@ def render_sidebar() -> None:
                 st.download_button("↓  Download PDF", data=result["pdf"], file_name=f"{slug}.pdf", mime="application/pdf", type="primary", key="dl_pdf")
             st.download_button("↓  Download TXT", data=result["txt"], file_name=f"{slug}.txt", mime="text/plain", key="dl_txt")
             if st.button("＋  Start a new meeting", use_container_width=True, key="reset"):
-                st.session_state.result = None; st.session_state.chat = []; st.session_state.page = "Meeting Studio"; st.rerun()
+                st.session_state.result = None; st.session_state.chat = []; st.session_state.cached_transcript = None; st.session_state.page = "Meeting Studio"; st.rerun()
         else:
             _h('<div class="side-note">Upload a recording or add a video link to create a meeting brief, extract tasks and explore the transcript.</div>')
 
@@ -399,27 +416,59 @@ def render_landing() -> None:
         go = st.button("Generate brief", type="primary", key="go")
 
         if go:
-            source, label = None, ""
+            source, label, cache_key = None, "", None
+            cached = st.session_state.get("cached_transcript")
             if mode == "YouTube link":
                 if not url:
                     st.warning("Paste a YouTube link first.")
                 else:
                     source, label = url, short_source(url)
+                    cache_key = ("url", url, language)
             elif upload is None:
                 st.warning("Choose a recording to upload first.")
             else:
-                folder = tempfile.mkdtemp(prefix="minutes_")
-                source = os.path.join(folder, os.path.basename(upload.name))
-                with open(source, "wb") as fh:
-                    fh.write(upload.getbuffer())
+                digest = hashlib.sha256(bytes(upload.getbuffer()[:65536])).hexdigest()
+                cache_key = ("file", upload.name, upload.size, digest, language)
                 label = upload.name
+                if cached and cached.get("cache_key") == cache_key and cached.get("transcript"):
+                    source = "cached"
+                else:
+                    folder = tempfile.mkdtemp(prefix="minutes_")
+                    source = os.path.join(folder, os.path.basename(upload.name))
+                    with open(source, "wb") as fh:
+                        fh.write(upload.getbuffer())
 
             if source:
-                result = run_with_progress(source, language, label)
+                result = run_with_progress(source, language, label, cache_key=cache_key)
                 if result:
                     st.session_state.result = result
                     st.session_state.chat = []
                     st.rerun()
+
+        cached = st.session_state.get("cached_transcript")
+        if cached and cached.get("failed") and cached.get("transcript"):
+            st.info("Your transcript was saved so you will not have to transcribe this recording again.")
+            retry_col, dl_col = st.columns(2)
+            with retry_col:
+                if st.button("Retry AI analysis", type="primary", key="retry_ai"):
+                    result = run_with_progress(
+                        None,
+                        cached["language"],
+                        cached["source_label"],
+                        cache_key=cached["cache_key"],
+                    )
+                    if result:
+                        st.session_state.result = result
+                        st.session_state.chat = []
+                        st.rerun()
+            with dl_col:
+                st.download_button(
+                    "↓  Download transcript",
+                    data=cached["transcript"],
+                    file_name="transcript.txt",
+                    mime="text/plain",
+                    key="dl_cached_tx",
+                )
 
     with gets:
         _h(
@@ -588,6 +637,7 @@ def render_result() -> None:
 def main() -> None:
     st.session_state.setdefault("result", None)
     st.session_state.setdefault("chat", [])
+    st.session_state.setdefault("cached_transcript", None)
     st.session_state.setdefault("page", "Dashboard")
     inject_css()
     render_sidebar()

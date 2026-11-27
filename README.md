@@ -2,11 +2,11 @@
 
 A RAG-enhanced generative AI system for intelligent meeting analysis and automated action-item management.
 
-Turn a meeting recording into a structured brief, then chat with the transcript. MeetMind AI keeps the Meet-Sutra pipeline by Ranveer Sachin Deshmukh (MIT, see `LICENSE`) and runs the language-model steps through OpenRouter.
+Turn a meeting recording into a structured brief, then chat with the transcript. MeetMind AI keeps the Meet-Sutra pipeline by Ranveer Sachin Deshmukh (MIT, see `LICENSE`) and runs the language-model steps through Google's Gemini API.
 
 Give it a YouTube link or an audio/video file. It transcribes the speech, summarises the meeting, extracts action items, decisions and open questions, and builds a **Retrieval-Augmented Generation (RAG)** index so you can ask questions and get answers grounded in what was actually said.
 
-The project is a pipeline of **LangChain (LCEL) chains** around a free-tier LLM, with a local vector store for retrieval. A Streamlit app and a command-line script both sit on top of the same core modules.
+The project is a pipeline of **LangChain (LCEL) chains** around Google Gemini, with a local vector store for retrieval. A Streamlit app and a command-line script both sit on top of the same core modules.
 
 ---
 
@@ -110,7 +110,7 @@ The retriever returns the four most similar chunks. They are joined into one con
 | Vector store | ChromaDB, collection `meeting_transcript` | `vector_store.py` |
 | Chunk size / overlap | 500 / 50 characters | `vector_store.py` |
 | Search | Similarity, top 4 | `vector_store.py`, `rag_engine.py` |
-| LLM | OpenRouter free instruct model (`baidu/ernie-5.5-flash-preview:free` by default, with other free fallbacks), temperature 0 | `core/llm.py` |
+| LLM | Google Gemini (`gemini-4-hydrogen` by default, with `gemini-3.8-flash` and `gemini-3.5-flash-lite` fallbacks), temperature 0 | `core/llm.py` |
 
 ### Generative AI techniques used
 
@@ -132,7 +132,7 @@ The retriever returns the four most similar chunks. They are joined into one con
 | Layer | Tools |
 |---|---|
 | LLM orchestration | LangChain, LCEL |
-| LLM | OpenRouter (`langchain-openrouter`, free model, override with `OPENROUTER_MODEL`) |
+| LLM | Google Gemini (`google-genai`, override with `GEMINI_MODEL`) |
 | Speech to text | OpenAI Whisper (local), Sarvam AI (Hinglish) |
 | Embeddings | HuggingFace `sentence-transformers`, `all-MiniLM-L6-v2` |
 | Vector database | ChromaDB |
@@ -184,8 +184,8 @@ pip install -r Requirements.txt
 Create a `.env` file in the project root:
 
 ```env
-OPENROUTER_API_KEY=your_openrouter_key
-# OPENROUTER_MODEL=baidu/ernie-5.5-flash-preview:free
+GEMINI_API_KEY=your_gemini_api_key
+# GEMINI_MODEL=gemini-4-hydrogen
 
 # Only needed for Hinglish audio
 SARVAM_API_KEY=your_sarvam_key
@@ -224,7 +224,7 @@ The command-line script asks for a path or URL, prints the same brief, then open
 | What to change | Where |
 |---|---|
 | Whisper model size | `WHISPER_MODEL` in `.env` |
-| LLM model | `OPENROUTER_MODEL` in `.env`, or `DEFAULT_MODEL` in `core/llm.py` |
+| LLM model | `GEMINI_MODEL` in `.env` or Streamlit secrets, or `DEFAULT_MODEL` in `core/llm.py` |
 | Summary chunk size | `split_transcript()` in `summarizer.py` |
 | RAG chunk size and overlap | `build_vector_store()` in `vector_store.py` |
 | Number of retrieved chunks | `k` in `build_rag_chain()` in `rag_engine.py` |
@@ -239,10 +239,10 @@ The command-line script asks for a path or URL, prints the same brief, then open
 |---|---|---|
 | English audio | Nowhere. Whisper runs locally. | Always |
 | Hinglish audio | Sarvam AI | Hinglish selected |
-| Transcript text | OpenRouter | Summary, extraction and every chat question |
+| Transcript text | Google Gemini API | Summary, extraction and every chat question |
 | Embeddings and vector index | Nowhere. Local MiniLM and ChromaDB. | Always |
 
-Free-tier LLM providers may log or use prompts, so avoid confidential recordings unless you have checked the provider's terms.
+Free-tier LLM providers may log or use prompts depending on your tier, so avoid confidential recordings unless you have checked the provider's terms.
 
 ---
 
@@ -252,10 +252,9 @@ Free-tier LLM providers may log or use prompts, so avoid confidential recordings
 - **Chat memory is short.** The last few turns are passed into the prompt, but retrieval still uses only the current question.
 - **Broad questions retrieve poorly.** Four 500-character chunks cannot represent a whole meeting, so questions such as "what were the main topics?" are better answered by the summary.
 - **Extraction sends the entire transcript in one call.** Very long meetings can exceed a free model's context window.
-- **Free-tier rate limits.** The map step makes one LLM call per 3000-character chunk, one after another, and a free model can return HTTP 429.
-- **Free-model availability changes.** The default model can be busy. The app then tries other free models, and a busy hour can still return HTTP 429.
+- **API rate limits.** The map step makes one LLM call per 3000-character chunk, one after another, and free-tier Gemini quotas can return HTTP 429 (`RESOURCE_EXHAUSTED`).
+- **Model availability.** The app tries fallback Gemini models if the primary model is rate-limited or unavailable, and preserves your Whisper transcript in the session if an AI step fails.
 - **No speaker labels or timestamps.** Diarisation is switched off, so the transcript does not say who spoke unless someone is named in the words.
-- **Free OpenRouter models are shared and can return HTTP 429.** The app tries several `:free` models. A busy period can still fail until you retry.
 - **FFmpeg must be installed.** If it is not on `PATH`, the app looks for the WinGet Gyan.FFmpeg build, or `FFMPEG_PATH`.
 - **The embedding model is English-only in practice.** This is fine because everything is translated to English first.
 

@@ -21,12 +21,12 @@ numpy>=1.26.0
 # --- Language detection (to decide if Hindi -> English is needed) ---
 langdetect>=1.0.9
 
-# --- LangChain (LCEL chains) + OpenRouter ---
+# --- LangChain (LCEL chains) + Google Gemini ---
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-community>=0.3.0
 langchain-text-splitters>=0.3.0
-langchain-openrouter>=0.3.0
+google-genai>=1.0.0
 
 # --- RAG: vector store + HuggingFace embeddings ---
 chromadb>=0.5.0
@@ -37,5 +37,5 @@ sentence-transformers>=3.0.0
 # --- Export (PDF / TXT) ---
 fpdf2>=2.8.0
 
-# --- Config / environment variables (OPENROUTER_API_KEY) ---
+# --- Config / environment variables (GEMINI_API_KEY) ---
 python-dotenv>=1.0.1

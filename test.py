@@ -1,43 +1,37 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-import requests
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-key = os.getenv("OPENROUTER_API_KEY")
+key = (os.getenv("GEMINI_API_KEY") or "").strip()
 
 if not key:
-    print("API key not found in .env")
-    exit()
+    print("GEMINI_API_KEY not found in .env")
+    raise SystemExit(1)
 
-url = "https://openrouter.ai/api/v1/chat/completions"
-
-payload = {
-    "model": "nvidia/nemotron-3.5-lightning:free",
-    "messages": [
-        {"role": "user", "content": "Reply with exactly: API WORKING"}
-    ],
-    "max_tokens": 30
-}
-
-headers = {
-    "Authorization": f"Bearer {key}",
-    "Content-Type": "application/json"
-}
+model = (os.getenv("GEMINI_MODEL") or "gemini-4-hydrogen").strip()
 
 try:
-    response = requests.post(
-        url,
-        headers=headers,
-        json=payload,
-        timeout=60
+    client = genai.Client(api_key=key)
+    response = client.models.generate_content(
+        model=model,
+        contents="Reply with exactly: API WORKING",
+        config=types.GenerateContentConfig(
+            temperature=0,
+            max_output_tokens=2048,
+        ),
     )
-
-    print("HTTP Status:", response.status_code)
+    print("Model:", model)
     print("Response:")
-    print(response.text)
-
-except Exception as e:
-    print("Request failed:", e)
+    print((response.text or "").strip())
+except APIError as exc:
+    print(f"Gemini API error ({exc.code}): {exc.message}")
+    raise SystemExit(1)
+except Exception as exc:
+    print("Request failed:", exc)
+    raise SystemExit(1)
